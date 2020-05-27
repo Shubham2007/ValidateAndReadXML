@@ -1,11 +1,30 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Net.Http;
+using System.Text;
+using System.Xml.Schema;
 
 namespace SimpleScheduler
 {
-    public class FileTransformation
+    public class FileTransformation : IFileTransformation
     {
+        #region Fields
+
+        // Schema path to validate the XMLs
+        private readonly string schemaPath = AppContext.BaseDirectory.Substring(0, AppContext.BaseDirectory.IndexOf("bin")) + "\\pain.001.001.03.xsd";
+
+        private const string targetSchemaNamespace = "urn:iso:std:iso:20022:tech:xsd:pain.001.001.03";
+
+        // API endpoint to post data
+        private const string APIUrl = "";
+
+        #endregion
+
+        #region Public Methods
+
         /// <summary>
         /// Watch folder periodically to validate and read pain.001 files
         /// </summary>
@@ -13,7 +32,7 @@ namespace SimpleScheduler
         {
             Console.WriteLine(string.Format("Watching Files at: {0}", DateTime.Now) + Environment.NewLine);
 
-            // Gets all the xml filePaths
+            // Gets all the XML filePaths
             var result = FileHelper.GetAllFilesPaths();
 
             if (!result.success)
@@ -25,11 +44,78 @@ namespace SimpleScheduler
             // All pain.001 XML file paths
             IEnumerable<string> filePaths = result.filePaths.Where(filePath => !string.IsNullOrWhiteSpace(filePath));
 
-            // Validate and read data from each XML file
-            FileHelper.ValidateAndReadFiles(filePaths);
+            ReadAndValidateFiles(filePaths);           
 
             Console.WriteLine(Environment.NewLine + string.Format("Successfully Watched Files at: {0}", DateTime.Now));
             Console.WriteLine("--------------------------------------------------------------------" + Environment.NewLine);
         }
+
+        #endregion
+
+        #region Private Methods
+
+        /// <summary>
+        /// Validate and read XML files
+        /// </summary>
+        /// <param name="filePaths"></param>
+        private void ReadAndValidateFiles(IEnumerable<string> filePaths)
+        {
+            // Validate and read data from each XML file
+            foreach (string filePath in filePaths)
+            {
+                try
+                {
+                    // Validate each XML file before processing
+                    FileHelper.ValidateXMLFile(filePath, schemaPath, targetSchemaNamespace);
+
+                    // Read XML File in C# objects
+                    Document document = FileHelper.ReadXMLFile<Document>(filePath);
+
+                    // Get filename from filepath
+                    string fileName = Path.GetFileName(filePath);
+
+                    // Send XML data to API
+                    //SendXMLData<Document>(fileName, document);
+
+                    Console.WriteLine($"FileName = {fileName}, MessageId = {document.CstmrCdtTrfInitn.GrpHdr.MsgId}");
+                }
+                catch (XmlSchemaValidationException ex)
+                {
+                    Console.WriteLine($"Unable to process file: {filePath} due to below error");
+                    Console.WriteLine(ex.Message);
+                    continue;
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine($"Error occured while processing the file: {filePath}");
+                    Console.WriteLine(e.Message);
+                    continue;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Send the XML pain.001 data to API
+        /// </summary>
+        /// <param name="fileName"></param>
+        /// <param name="document"></param>
+        /// <returns></returns>
+        private static void SendXMLData<T>(string fileName, T document) where T : XMLDocument
+        {
+            using (var httpClient = new HttpClient())
+            {
+                var jsonContent = JsonConvert.SerializeObject(document);
+                StringContent stringContent = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+                // Make http call to post data
+                var response = httpClient.PostAsync(APIUrl, stringContent).Result;
+
+                response.EnsureSuccessStatusCode();
+                var serializedData = response.Content.ReadAsStringAsync().Result;
+                string data = JsonConvert.DeserializeObject<string>(serializedData);
+            }
+        }
+
+        #endregion
     }
 }

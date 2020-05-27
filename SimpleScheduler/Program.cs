@@ -9,18 +9,21 @@ namespace SimpleScheduler
         {
             try
             {
+                // Get the File Transformation instance from services
+                var fileTransformationService = (IFileTransformation)DependencyHelper.ServiceProvider.GetService(typeof(IFileTransformation));
+
                 // Call ProcessFiles method in every 1 Minute
                 var timer = new Timer(e =>
                 {
-                    new FileTransformation().ProcessFiles();
+                    fileTransformationService.ProcessFiles();
                 }, null, TimeSpan.Zero, TimeSpan.FromMinutes(1));
-
-                //ProcessFiles();
             }
             catch (Exception e)
             {
                 Console.WriteLine($"Unknown Error occured while reading files: {e.Message}");
             }
+
+            DependencyHelper.DisposeServices();
 
             Console.ReadKey();
         }

@@ -259,7 +259,7 @@ namespace SimpleScheduler
     }
 
     [XmlRoot(ElementName = "Document", Namespace = "urn:iso:std:iso:20022:tech:xsd:pain.001.001.03")]
-    public class Document
+    public class Document : XMLDocument
     {
         [XmlElement(ElementName = "CstmrCdtTrfInitn", Namespace = "urn:iso:std:iso:20022:tech:xsd:pain.001.001.03")]
         public CstmrCdtTrfInitn CstmrCdtTrfInitn { get; set; }
