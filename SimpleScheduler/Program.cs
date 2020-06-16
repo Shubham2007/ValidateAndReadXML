@@ -22,8 +22,10 @@ namespace SimpleScheduler
             {
                 Console.WriteLine($"Unknown Error occured while reading files: {e.Message}");
             }
-
-            DependencyHelper.DisposeServices();
+            finally
+            {
+                DependencyHelper.DisposeServices();
+            }        
 
             Console.ReadKey();
         }

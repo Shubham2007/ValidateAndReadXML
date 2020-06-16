@@ -5,16 +5,23 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
+using System.Xml;
 using System.Xml.Schema;
 
 namespace SimpleScheduler
 {
+    /// <summary>
+    /// Class used to transform XMLs to C# objects after validation against schema
+    /// </summary>
     public class FileTransformation : IFileTransformation
     {
         #region Fields
 
         // Schema path to validate the XMLs
         private readonly string schemaPath = AppContext.BaseDirectory.Substring(0, AppContext.BaseDirectory.IndexOf("bin")) + "\\pain.001.001.03.xsd";
+
+        // Path for XSLT
+        private readonly string xsltPath = AppContext.BaseDirectory.Substring(0, AppContext.BaseDirectory.IndexOf("bin")) + "\\ISO-XML-To-EDI.xslt";
 
         private const string targetSchemaNamespace = "urn:iso:std:iso:20022:tech:xsd:pain.001.001.03";
 
@@ -68,11 +75,24 @@ namespace SimpleScheduler
                     // Validate each XML file before processing
                     FileHelper.ValidateXMLFile(filePath, schemaPath, targetSchemaNamespace);
 
-                    // Read XML File in C# objects
-                    Document document = FileHelper.ReadXMLFile<Document>(filePath);
-
                     // Get filename from filepath
                     string fileName = Path.GetFileName(filePath);
+
+                    // Convert ISO-XML to EDI
+                    var objFileXsltSettings = new System.Xml.Xsl.XsltSettings();
+                    var objFileXsltTrnsfrm = new System.Xml.Xsl.XslCompiledTransform();
+                    System.Xml.Xsl.XsltArgumentList xslArgs = new System.Xml.Xsl.XsltArgumentList();
+
+                    using (var objFileXmlWriter = new XmlTextWriter(@"C:\Users\shubham.chauhan\Desktop\EDIFiles\" + fileName + "-EDI.txt", Encoding.Default))
+                    {
+                        objFileXsltSettings.EnableScript = true;
+                        objFileXsltTrnsfrm.Load(xsltPath, objFileXsltSettings, null);
+                        xslArgs.AddParam("fileid", "", "1");
+                        objFileXsltTrnsfrm.Transform(filePath, xslArgs, objFileXmlWriter);
+                    }
+
+                    // Read XML File in C# objects
+                    Document document = FileHelper.ReadXMLFile<Document>(filePath);
 
                     // Send XML data to API
                     //SendXMLData<Document>(fileName, document);

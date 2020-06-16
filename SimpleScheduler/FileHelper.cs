@@ -9,6 +9,9 @@ using System.Xml.Serialization;
 
 namespace SimpleScheduler
 {
+    /// <summary>
+    /// Helper class used for common file operations
+    /// </summary>
     public static class FileHelper
     {
         #region Fields
